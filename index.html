@@ -63,13 +63,12 @@
         .btn-primary { background: var(--red-gradient); color: #FFF; box-shadow: var(--shadow-lg); width: 100%; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(225,6,0,0.3); }
         
-        /* Social Links Builder */
-        .social-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-        .social-row select { flex: 0 0 140px; }
-        .social-row input { flex: 1; }
-        .social-row button { background: #FEE2E2; color: #DC2626; border: none; padding: 14px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; }
+        /* Dynamic Rows (Social & Contacts) */
+        .dynamic-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .dynamic-row input { flex: 1; }
+        .dynamic-row button { background: #FEE2E2; color: #DC2626; border: none; padding: 14px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; flex-shrink: 0; }
 
-        /* Table */
+        /* Desktop Table */
         .table-responsive { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
         table { width: 100%; border-collapse: collapse; white-space: nowrap; }
         th { background: var(--surface-soft); padding: 16px; text-align: right; font-weight: 800; font-size: 0.85rem; color: var(--heading-color); border-bottom: 1px solid var(--border-color); }
@@ -98,10 +97,10 @@
             .sidebar.open { transform: translateX(0); }
             .main-content { margin-right: 0; padding: 20px 16px; }
             .card { padding: 20px; }
-            .social-row { flex-direction: column; align-items: stretch; }
-            .social-row select, .social-row input { flex: auto; }
-            .social-row button { padding: 10px; }
-            /* Mobile Table */
+            .dynamic-row { flex-direction: column; align-items: stretch; }
+            .dynamic-row button { padding: 10px; margin-top: 5px; }
+            
+            /* Mobile Table to Cards */
             .table-responsive { border: none; overflow: visible; }
             table, thead, tbody, th, td, tr { display: block; }
             thead tr { position: absolute; top: -9999px; left: -9999px; }
@@ -232,17 +231,19 @@
                 </div>
             </div>
 
-            <!-- 3. معلومات التواصل -->
+            <!-- 3. معلومات التواصل (محدث لدعم أرقام متعددة) -->
             <div id="tab-contact" class="tab-content" style="display:none;">
                 <div class="card">
                     <form id="contactForm" onsubmit="saveSettings(event, 'contact')">
                         <div class="form-group">
-                            <label>رقم الهاتف (للاتصال)</label>
-                            <input type="text" id="contact_phone" class="form-control" dir="ltr" style="text-align:right;">
+                            <label>أرقام الهاتف (للاتصال)</label>
+                            <div id="phonesContainer"></div>
+                            <button type="button" onclick="addPhoneRow()" style="background:var(--surface-soft); color:var(--primary-red); border:1px dashed var(--primary-red); padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:700; width:100%; margin-top:10px;">+ إضافة رقم هاتف جديد</button>
                         </div>
                         <div class="form-group">
-                            <label>رقم الواتساب (مع رمز الدولة بدون +)</label>
-                            <input type="text" id="contact_whatsapp" class="form-control" dir="ltr" style="text-align:right;" placeholder="218920010505">
+                            <label>أرقام الواتساب (مع رمز الدولة بدون +)</label>
+                            <div id="whatsappsContainer"></div>
+                            <button type="button" onclick="addWhatsappRow()" style="background:var(--surface-soft); color:var(--primary-red); border:1px dashed var(--primary-red); padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:700; width:100%; margin-top:10px;">+ إضافة رقم واتساب جديد</button>
                         </div>
                         <button type="submit" class="btn btn-primary">حفظ معلومات التواصل</button>
                     </form>
@@ -255,9 +256,7 @@
                     <form id="socialForm" onsubmit="saveSettings(event, 'social')">
                         <div class="form-group">
                             <label>روابط التواصل الاجتماعي (ستظهر في الموقع)</label>
-                            <div id="socialLinksContainer">
-                                <!-- سيتم توليد الحقول هنا -->
-                            </div>
+                            <div id="socialLinksContainer"></div>
                             <button type="button" onclick="addSocialRow()" style="background:var(--surface-soft); color:var(--primary-red); border:1px dashed var(--primary-red); padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:700; width:100%; margin-top:10px;">+ إضافة رابط جديد</button>
                         </div>
                         <button type="submit" class="btn btn-primary">حفظ الروابط</button>
@@ -464,8 +463,41 @@
         }
 
         function fillContactForm() {
-            document.getElementById('contact_phone').value = currentSettings.contact_phone || '';
-            document.getElementById('contact_whatsapp').value = currentSettings.contact_whatsapp || '';
+            // تعبئة أرقام الهاتف
+            const phonesContainer = document.getElementById('phonesContainer');
+            phonesContainer.innerHTML = '';
+            let phones = currentSettings.contact_phones || [];
+            if (phones.length === 0 && currentSettings.contact_phone) phones = [currentSettings.contact_phone];
+            if (phones.length === 0) addPhoneRow();
+            else phones.forEach(p => addPhoneRow(p));
+
+            // تعبئة أرقام الواتساب
+            const whatsappsContainer = document.getElementById('whatsappsContainer');
+            whatsappsContainer.innerHTML = '';
+            let whatsapps = currentSettings.contact_whatsapps || [];
+            if (whatsapps.length === 0 && currentSettings.contact_whatsapp) whatsapps = [currentSettings.contact_whatsapp];
+            if (whatsapps.length === 0) addWhatsappRow();
+            else whatsapps.forEach(w => addWhatsappRow(w));
+        }
+
+        function addPhoneRow(val = '') {
+            const div = document.createElement('div');
+            div.className = 'dynamic-row';
+            div.innerHTML = `
+                <input type="text" class="form-control phone-input" value="${val}" placeholder="مثال: 0920010505" dir="ltr" style="text-align:right;">
+                <button type="button" onclick="this.parentElement.remove()">×</button>
+            `;
+            document.getElementById('phonesContainer').appendChild(div);
+        }
+
+        function addWhatsappRow(val = '') {
+            const div = document.createElement('div');
+            div.className = 'dynamic-row';
+            div.innerHTML = `
+                <input type="text" class="form-control whatsapp-input" value="${val}" placeholder="مثال: 218920010505" dir="ltr" style="text-align:right;">
+                <button type="button" onclick="this.parentElement.remove()">×</button>
+            `;
+            document.getElementById('whatsappsContainer').appendChild(div);
         }
 
         function fillSocialForm() {
@@ -479,9 +511,9 @@
         function addSocialRow(platform = 'facebook', url = '') {
             const container = document.getElementById('socialLinksContainer');
             const div = document.createElement('div');
-            div.className = 'social-row';
+            div.className = 'dynamic-row';
             div.innerHTML = `
-                <select class="form-control platform-select">
+                <select class="form-control platform-select" style="flex: 0 0 140px;">
                     <option value="facebook" ${platform === 'facebook' ? 'selected' : ''}>فيسبوك</option>
                     <option value="instagram" ${platform === 'instagram' ? 'selected' : ''}>إنستجرام</option>
                     <option value="twitter" ${platform === 'twitter' ? 'selected' : ''}>تويتر / X</option>
@@ -508,12 +540,23 @@
                     about_vision: document.getElementById('about_vision').value
                 };
             } else if (type === 'contact') {
+                // جمع أرقام الهاتف
+                const phoneInputs = document.querySelectorAll('.phone-input');
+                const phones = Array.from(phoneInputs).map(input => input.value.trim()).filter(v => v !== '');
+                
+                // جمع أرقام الواتساب
+                const whatsappInputs = document.querySelectorAll('.whatsapp-input');
+                const whatsapps = Array.from(whatsappInputs).map(input => input.value.trim()).filter(v => v !== '');
+
                 updateData = {
-                    contact_phone: document.getElementById('contact_phone').value,
-                    contact_whatsapp: document.getElementById('contact_whatsapp').value
+                    contact_phones: phones,
+                    contact_whatsapps: whatsapps,
+                    // نحتفظ بالعمود القديم للتوافق مع الصفحات القديمة
+                    contact_phone: phones.length > 0 ? phones[0] : null,
+                    contact_whatsapp: whatsapps.length > 0 ? whatsapps[0] : null
                 };
             } else if (type === 'social') {
-                const rows = document.querySelectorAll('.social-row');
+                const rows = document.querySelectorAll('.dynamic-row');
                 const links = Array.from(rows).map(row => ({
                     platform: row.querySelector('.platform-select').value,
                     url: row.querySelector('.url-input').value
